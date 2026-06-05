@@ -1,0 +1,153 @@
+/* Page-level responsive refinements for legacy standalone tools. */
+
+body .query-container,
+body .config-container,
+body .inventory-container {
+    width: min(1600px, calc(100vw - 32px));
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+body .query-container > h1,
+body .config-container > h1,
+body .inventory-container > h1 {
+    color: var(--rd-text) !important;
+    background: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    font-size: clamp(26px, 2.5vw, 38px) !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
+    text-align: left !important;
+}
+
+body .query-tabs,
+body .tabs,
+body .chart-tabs {
+    min-width: 0;
+}
+
+body .table-wrapper,
+body .table-container,
+body [style*="overflow-x: auto"] {
+    max-width: 100%;
+}
+
+@media (max-width: 860px) {
+    body .query-container,
+    body .config-container,
+    body .inventory-container {
+        width: min(100vw - 20px, 760px) !important;
+        padding-top: 14px !important;
+    }
+
+    body .query-tabs,
+    body .tabs,
+    body .chart-tabs {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body .query-tabs > *,
+    body .tabs > *,
+    body .chart-tabs > * {
+        flex: 0 0 auto !important;
+    }
+
+    body .hot-search-grid,
+    body .table-list,
+    body .charts-container,
+    body .charts-grid,
+    body .chart-grid,
+    body .result-grid,
+    body .summary-grid,
+    body .config-grid,
+    body .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    body .panel-header,
+    body .template-header,
+    body .modal-header {
+        align-items: flex-start !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    body .modal-overlay {
+        padding: 12px;
+        align-items: flex-start !important;
+        overflow-y: auto;
+    }
+
+    body .modal {
+        min-width: 0 !important;
+        width: min(100%, 720px) !important;
+        margin: 24px auto !important;
+    }
+
+    body .filter-section,
+    body .filter-bar,
+    body .controls-section,
+    body .import-section,
+    body .analysis-controls,
+    body .query-builder,
+    body .config-grid {
+        max-width: 100%;
+    }
+
+    body .chart-container,
+    body .chart-card,
+    body .result-card {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    body .history-table,
+    body .result-table,
+    body #momentum-table {
+        min-width: 900px !important;
+    }
+}
+
+@media (max-width: 620px) {
+    body .tasks-container > h1,
+    body .container > .header .title,
+    body .main-content h1 {
+        font-size: 24px !important;
+        line-height: 1.25;
+    }
+
+    body .task-panel,
+    body .history-panel,
+    body .result-panel,
+    body .card,
+    body .panel {
+        padding: 14px !important;
+        border-radius: var(--rd-radius) !important;
+    }
+
+    body .form-group,
+    body .controls-group {
+        min-width: min(100%, 220px) !important;
+    }
+
+    body .controls-group,
+    body .task-form,
+    body .chart-controls {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    body .controls-group button,
+    body .task-form button,
+    body .chart-controls button,
+    body .controls-group input,
+    body .task-form input,
+    body .task-form select {
+        width: 100%;
+    }
+}

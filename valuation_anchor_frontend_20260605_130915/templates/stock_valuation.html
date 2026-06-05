@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>估值工作台</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app_shell.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='stock_valuation.css') }}">
+</head>
+<body>
+    <main class="valuation-page" data-method-definitions='{{ method_definitions|tojson }}'>
+        <section class="valuation-top">
+            <div>
+                <h1>估值工作台</h1>
+                <div class="subtitle">从公司事实、方法选择、假设辩论、情景测算，到结论和反证条件，沉淀一份可复盘的估值工作纸。</div>
+            </div>
+            <div class="stock-search">
+                <label>股票
+                    <input id="stockInput" autocomplete="off" placeholder="000001 平安银行">
+                </label>
+                <label>估值日
+                    <input id="asOfInput" type="date">
+                </label>
+                <button id="fetchBtn" type="button">拉取</button>
+                <button id="createCaseBtn" type="button" class="primary">建案例</button>
+                <div class="suggestions" id="suggestions"></div>
+            </div>
+        </section>
+
+        <section class="workspace-strip">
+            <div class="case-summary">
+                <span id="caseLabel">未创建工作纸</span>
+                <strong id="caseTitle">先拉数据或输入手工字段</strong>
+            </div>
+            <div class="workflow-rail">
+                <button type="button" class="active" data-tab-button="profile"><span>01</span>画像</button>
+                <button type="button" data-tab-button="methods"><span>02</span>方法</button>
+                <button type="button" data-tab-button="assumptions"><span>03</span>假设/AI</button>
+                <button type="button" data-tab-button="scenarios"><span>04</span>情景</button>
+                <button type="button" data-tab-button="conclusion"><span>05</span>结论</button>
+                <button type="button" data-tab-button="cases"><span>06</span>案例库</button>
+            </div>
+        </section>
+
+        <section class="status-line" id="sideStatus"></section>
+        <section class="warning-list" id="warningList"></section>
+
+        <section class="tab-panel active" data-tab-panel="profile">
+            <div class="panel-grid two">
+                <section class="section">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">公司画像与基本面体检</div>
+                            <div class="section-sub">先确认客观事实和数据日期，再进入方法决策。</div>
+                        </div>
+                        <button id="toggleConfigBtn" type="button">字段配置</button>
+                    </div>
+                    <div class="section-body">
+                        <div class="snapshot">
+                            <div class="metric"><span>股票</span><strong id="mStock">-</strong></div>
+                            <div class="metric"><span>现价</span><strong id="mPrice">-</strong></div>
+                            <div class="metric"><span>PE / PB</span><strong id="mPepb">-</strong></div>
+                            <div class="metric"><span>PS / PCF</span><strong id="mPspcf">-</strong></div>
+                            <div class="metric"><span>ROE</span><strong id="mRoe">-</strong></div>
+                            <div class="metric"><span>行业</span><strong id="mIndustry">-</strong></div>
+                        </div>
+                        <div class="data-quality-wrap">
+                            <div class="quality-card">
+                                <span>数据完整度</span>
+                                <strong id="qualityScore">-</strong>
+                                <div class="quality-bar"><i id="qualityBar"></i></div>
+                            </div>
+                            <div class="date-grid" id="dataDates"></div>
+                        </div>
+                        <div class="peer-stats" id="industryPeerStats">
+                            <div class="empty-state">拉取数据后会显示同行业估值和基本面高/低/平均参考。</div>
+                        </div>
+                    </div>
+                    <div class="config-panel" id="configPanel">
+                        <div class="config-grid" id="configGrid"></div>
+                        <div class="button-row">
+                            <button id="saveConfigBtn" type="button" class="primary">保存字段</button>
+                            <button id="resetConfigBtn" type="button">恢复默认</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">数据源与手工补充</div>
+                            <div class="section-sub">聚源缺字段时可先补手工值，系统会记录覆盖项。</div>
+                        </div>
+                        <div class="segmented" role="group" aria-label="数据源">
+                            <button type="button" class="active" data-source="juyuan">聚源</button>
+                            <button type="button" data-source="mixed">混合</button>
+                            <button type="button" data-source="manual">手工</button>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <div class="facts-grid">
+                            <label>现价<input data-manual="close_price" inputmode="decimal"></label>
+                            <label>PE TTM<input data-manual="pe_ttm" inputmode="decimal"></label>
+                            <label>PB<input data-manual="pb" inputmode="decimal"></label>
+                            <label>PS TTM<input data-manual="ps_ttm" inputmode="decimal"></label>
+                            <label>PCF TTM<input data-manual="pcf_ttm" inputmode="decimal"></label>
+                            <label>ROE TTM<input data-manual="roe_ttm" inputmode="decimal"></label>
+                            <label>收入增速<input data-manual="revenue_growth" inputmode="decimal"></label>
+                            <label>每股收入<input data-manual="revenue_ps" inputmode="decimal"></label>
+                            <label>每股分红<input data-manual="dividend_ps" inputmode="decimal"></label>
+                            <label class="field-wide">行业<input data-manual="third_industry" placeholder="银行 / 半导体 / 消费电子"></label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="methods">
+            <div class="panel-grid two">
+                <section class="section">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">估值方法决策</div>
+                            <div class="section-sub">先决定公司适合什么方法，再进入假设。</div>
+                        </div>
+                        <button id="guideBtn" type="button" class="primary">生成路径</button>
+                    </div>
+                    <div class="section-body">
+                        <div class="method-decision" id="methodDecision">
+                            <div class="empty-state">拉取数据后生成估值路径，这里会显示主估值锚、辅助验证方法和暂不适合的方法。</div>
+                        </div>
+                        <div class="recommendations" id="recommendations"></div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">理论解释层</div>
+                            <div class="section-sub">需要时展开看，操作区和教学层分开。</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <div class="method-theory" id="methodTheory">
+                            {% for method in method_definitions %}
+                            <details>
+                                <summary>{{ method.name }} · {{ method.title }}</summary>
+                                <p>{{ method.description }}</p>
+                                <span>{{ method.anchor }}</span>
+                            </details>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="assumptions">
+            <section class="section silent-workpaper">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">静默式假设工作纸</div>
+                        <div class="section-sub">像填模型一样录入参数；AI 只以状态灯提示，不常驻打断。</div>
+                    </div>
+                    <div class="button-row compact">
+                        <label class="inline-check"><input id="useAiGuide" type="checkbox"> 在线 AI</label>
+                        <button id="applyGuideBtn" type="button">套用建议</button>
+                        <button id="reviewAssumptionsBtn" type="button">检查</button>
+                        <button id="saveAssumptionsBtn" type="button" class="primary">保存</button>
+                    </div>
+                </div>
+                <div class="section-body">
+                    <div class="linter-status-bar" id="assumptionStatusBar" role="button" tabindex="0" aria-expanded="false">
+                        <span class="status-dot ok"></span>
+                        <strong>AI 同步完成</strong>
+                        <span>0 阻断</span>
+                        <span>0 待补证据</span>
+                        <span>0 压力测试</span>
+                    </div>
+
+                    <div id="assumptionGuidePanel" class="assumption-guide-panel"></div>
+
+                    <div class="assumption-grid-shell">
+                        <div class="assumption-grid-head">
+                            <span>参数</span>
+                            <span>当前假设</span>
+                            <span>参考基准</span>
+                            <span>逻辑简述</span>
+                            <span>AI</span>
+                        </div>
+                        <div class="assumption-rows" id="assumptionRows">
+                            <div class="assumption-row" data-assumption-row="target_pe">
+                                <div class="assumption-name"><strong>目标 PE</strong><small>盈利锚</small></div>
+                                <input id="targetPe" data-assumption-label="目标 PE" inputmode="decimal" value="18">
+                                <div class="assumption-reference" data-assumption-reference="target_pe">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="target_pe" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="target_pe" aria-label="目标 PE AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="target_pb">
+                                <div class="assumption-name"><strong>目标 PB</strong><small>资产锚</small></div>
+                                <input id="targetPb" data-assumption-label="目标 PB" inputmode="decimal" value="2">
+                                <div class="assumption-reference" data-assumption-reference="target_pb">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="target_pb" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="target_pb" aria-label="目标 PB AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="target_ps">
+                                <div class="assumption-name"><strong>目标 PS</strong><small>收入锚</small></div>
+                                <input id="targetPs" data-assumption-label="目标 PS" inputmode="decimal" value="3">
+                                <div class="assumption-reference" data-assumption-reference="target_ps">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="target_ps" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="target_ps" aria-label="目标 PS AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="target_pcf">
+                                <div class="assumption-name"><strong>目标 PCF</strong><small>现金流锚</small></div>
+                                <input id="targetPcf" data-assumption-label="目标 PCF" inputmode="decimal" value="12">
+                                <div class="assumption-reference" data-assumption-reference="target_pcf">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="target_pcf" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="target_pcf" aria-label="目标 PCF AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="dcf_growth">
+                                <div class="assumption-name"><strong>DCF 增长率</strong><small>现金流增速</small></div>
+                                <input id="dcfGrowth" data-assumption-label="DCF 增长率" inputmode="decimal" value="5">
+                                <div class="assumption-reference" data-assumption-reference="dcf_growth">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="dcf_growth" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="dcf_growth" aria-label="DCF 增长率 AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="discount_rate">
+                                <div class="assumption-name"><strong>折现率</strong><small>风险折现</small></div>
+                                <input id="discountRate" data-assumption-label="折现率" inputmode="decimal" value="10">
+                                <div class="assumption-reference" data-assumption-reference="discount_rate">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="discount_rate" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="discount_rate" aria-label="折现率 AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="terminal_growth">
+                                <div class="assumption-name"><strong>终值增长</strong><small>长期假设</small></div>
+                                <input id="terminalGrowth" data-assumption-label="终值增长" inputmode="decimal" value="2.5">
+                                <div class="assumption-reference" data-assumption-reference="terminal_growth">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="terminal_growth" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="terminal_growth" aria-label="终值增长 AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="target_dividend_yield">
+                                <div class="assumption-name"><strong>股息率锚</strong><small>分红锚</small></div>
+                                <input id="targetDividendYield" data-assumption-label="股息率锚" inputmode="decimal" value="3">
+                                <div class="assumption-reference" data-assumption-reference="target_dividend_yield">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="target_dividend_yield" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="target_dividend_yield" aria-label="股息率锚 AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="eps">
+                                <div class="assumption-name"><strong>EPS</strong><small>手工补充</small></div>
+                                <input id="epsInput" data-assumption-label="EPS" inputmode="decimal">
+                                <div class="assumption-reference" data-assumption-reference="eps">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="eps" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="eps" aria-label="EPS AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="bvps">
+                                <div class="assumption-name"><strong>每股净资产</strong><small>手工补充</small></div>
+                                <input id="bvpsInput" data-assumption-label="每股净资产" inputmode="decimal">
+                                <div class="assumption-reference" data-assumption-reference="bvps">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="bvps" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="bvps" aria-label="每股净资产 AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="cashflow_ps">
+                                <div class="assumption-name"><strong>每股现金流</strong><small>手工补充</small></div>
+                                <input id="cashflowPsInput" data-assumption-label="每股现金流" inputmode="decimal">
+                                <div class="assumption-reference" data-assumption-reference="cashflow_ps">-</div>
+                                <input class="assumption-logic-line" data-assumption-logic="cashflow_ps" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="cashflow_ps" aria-label="每股现金流 AI 状态"></button>
+                            </div>
+                            <div class="assumption-row" data-assumption-row="dcf_years">
+                                <div class="assumption-name"><strong>DCF 年数</strong><small>预测窗口</small></div>
+                                <input id="dcfYears" data-assumption-label="DCF 年数" inputmode="numeric" value="5">
+                                <div class="assumption-reference" data-assumption-reference="dcf_years">常用 3 / 5 / 10</div>
+                                <input class="assumption-logic-line" data-assumption-logic="dcf_years" placeholder="一句话逻辑">
+                                <button type="button" class="lint-indicator" data-lint-toggle="dcf_years" aria-label="DCF 年数 AI 状态"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <textarea id="assumptionLogic" class="hidden-assumption-logic" aria-hidden="true" tabindex="-1"></textarea>
+                    <select id="coachField" class="hidden-assumption-logic" aria-hidden="true" tabindex="-1">
+                        <option value="dcf_growth">DCF 增长率</option>
+                        <option value="discount_rate">折现率</option>
+                        <option value="target_pe">目标 PE</option>
+                        <option value="target_pb">目标 PB</option>
+                        <option value="target_ps">目标 PS</option>
+                        <option value="target_pcf">目标 PCF</option>
+                        <option value="target_dividend_yield">股息率锚</option>
+                    </select>
+                    <textarea id="coachMessage" class="hidden-assumption-logic" aria-hidden="true" tabindex="-1"></textarea>
+                    <button id="coachBtn" type="button" class="hidden-assumption-logic" aria-hidden="true" tabindex="-1">发起追问</button>
+                    <span id="reviewModeLabel" class="hidden-assumption-logic"></span>
+                    <span id="coachModeLabel" class="hidden-assumption-logic"></span>
+                    <div id="coachFocus" class="hidden-assumption-logic"></div>
+                    <div id="coachReferenceChips" class="hidden-assumption-logic"></div>
+                    <div id="assumptionReviewPanel" class="hidden-assumption-logic"></div>
+                    <div id="coachThread" class="hidden-assumption-logic"></div>
+                </div>
+            </section>
+
+            <aside class="assumption-drawer" id="assumptionDrawer" aria-hidden="true">
+                <div class="assumption-drawer-backdrop" data-close-assumption-drawer></div>
+                <div class="assumption-drawer-panel">
+                    <div class="assumption-drawer-head">
+                        <div>
+                            <strong>AI 检查单</strong>
+                            <span id="drawerSubtitle">静默收纳，不占主屏</span>
+                        </div>
+                        <button type="button" data-close-assumption-drawer aria-label="关闭检查单">×</button>
+                    </div>
+                    <div class="assumption-drawer-body">
+                        <div id="assumptionTodoList" class="assumption-todo-list"></div>
+                        <div id="coachThreadDrawer" class="coach-thread compact"></div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="scenarios">
+            <section class="section">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">情景测算</div>
+                        <div class="section-sub">基于基准假设生成悲观/基准/乐观，并保存进工作纸。</div>
+                    </div>
+                    <div class="button-row compact">
+                        <button id="calcBtn" type="button">计算当前</button>
+                        <button id="runScenariosBtn" type="button" class="primary">测算三情景</button>
+                    </div>
+                </div>
+                <div class="section-body">
+                    <div class="scenario-grid" id="scenarioGrid"></div>
+                    <div class="results" id="results"></div>
+                    <div class="dcf-detail" id="dcfDetail"></div>
+                </div>
+            </section>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="conclusion">
+            <div class="panel-grid two">
+                <section class="section">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">投资结论与安全边际</div>
+                            <div class="section-sub">结论只在方法、假设和数据质量过关后才有效。</div>
+                        </div>
+                        <button id="saveSnapshotBtn" type="button">保存快照</button>
+                    </div>
+                    <div class="section-body">
+                        <div class="conclusion-box" id="conclusionBox">
+                            <div class="empty-state">完成方法和假设后，这里会汇总主/辅估值锚、安全边际和结论强度。</div>
+                        </div>
+                    </div>
+                </section>
+                <section class="section">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">反证检查单</div>
+                            <div class="section-sub">哪些事实发生后，本次估值逻辑失效。</div>
+                        </div>
+                    </div>
+                    <div class="section-body">
+                        <div class="counter-list" id="counterList"></div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="cases">
+            <section class="section">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">案例库与历史回溯</div>
+                        <div class="section-sub">保存完整工作纸：事实切片、方法决策、假设、AI 对话和反证。</div>
+                    </div>
+                    <div class="case-toolbar">
+                        <div class="segmented compact" role="group" aria-label="案例范围">
+                            <button type="button" class="active" data-case-scope="current">当前股票</button>
+                            <button type="button" data-case-scope="all">全部案例</button>
+                        </div>
+                        <button id="refreshCasesBtn" type="button">刷新</button>
+                    </div>
+                </div>
+                <div class="section-body">
+                    <div class="case-list" id="caseList">
+                        <div class="empty-state">暂无案例。创建工作纸后会显示在这里。</div>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='stock_valuation.js') }}"></script>
+</body>
+</html>

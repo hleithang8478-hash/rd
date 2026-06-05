@@ -1,0 +1,1699 @@
+{% macro feature_link(endpoint, icon, title, desc, danger=False) -%}
+<a href="{{ url_for(endpoint) }}" class="feature-item{% if danger %} danger{% endif %}" data-rd-tab-title="{{ title }}" data-rd-tab-icon="{{ icon }}">
+    <span class="feature-icon">{{ icon }}</span>
+    <span>
+        <span class="feature-title">{{ title }}</span>
+        <span class="feature-desc">{{ desc }}</span>
+    </span>
+</a>
+{%- endmacro %}
+
+{% macro module_card(endpoint, module_id, icon, badge, title, desc, extra_class='') -%}
+<div class="module-card {{ extra_class }}" draggable="true" data-module-id="{{ module_id }}" data-url="{{ url_for(endpoint) }}" data-rd-tab-title="{{ title }}" data-rd-tab-icon="{{ icon }}">
+    <div class="module-badge">{{ badge }}</div>
+    <div class="module-icon">{{ icon }}</div>
+    <div class="module-body">
+        <div class="module-title">{{ title }}</div>
+        <div class="module-description">{{ desc }}</div>
+    </div>
+    <div class="module-drag-handle">拖动排序</div>
+</div>
+{%- endmacro %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投资复盘系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app_shell.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app_responsive_overrides.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #050607;
+            --bg-secondary: #0b0f14;
+            --bg-card: rgba(17, 24, 39, 0.72);
+            --bg-card-soft: rgba(255, 255, 255, 0.045);
+            --bg-hover: rgba(255, 255, 255, 0.075);
+            --text-primary: #f8fafc;
+            --text-secondary: #a4b0c2;
+            --text-tertiary: #64748b;
+            --border: rgba(148, 163, 184, 0.16);
+            --border-strong: rgba(148, 163, 184, 0.28);
+            --accent: #6366f1;
+            --accent-2: #10b981;
+            --danger: #f87171;
+            --radius: 8px;
+            --transition: all 0.18s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text-primary);
+            background:
+                radial-gradient(circle at 10% 0%, rgba(99, 102, 241, 0.18), transparent 34rem),
+                radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.12), transparent 30rem),
+                var(--bg-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            line-height: 1.55;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .top-bar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.9rem 2rem;
+            background: rgba(5, 8, 12, 0.82);
+            backdrop-filter: blur(24px) saturate(160%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .top-bar h1 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 720;
+            letter-spacing: 0;
+        }
+
+        .top-actions,
+        .action-group {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .btn,
+        .btn-menu {
+            min-height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            padding: 0.48rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.065);
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font: inherit;
+            font-size: 0.86rem;
+            font-weight: 650;
+        }
+
+        .btn:hover,
+        .btn-menu:hover,
+        .btn-menu.active {
+            background: var(--bg-hover);
+            border-color: var(--border-strong);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: rgba(99, 102, 241, 0.72);
+            border-color: rgba(129, 140, 248, 0.42);
+        }
+
+        .btn-essay {
+            background: rgba(16, 185, 129, 0.68);
+            border-color: rgba(52, 211, 153, 0.36);
+        }
+
+        .btn-ai {
+            background: rgba(14, 165, 233, 0.58);
+            border-color: rgba(56, 189, 248, 0.34);
+        }
+
+        .btn.is-disabled,
+        .btn:disabled {
+            opacity: 0.46;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .feature-menu-shell {
+            position: relative;
+        }
+
+        .feature-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 0.55rem);
+            right: 0;
+            width: min(920px, calc(100vw - 3rem));
+            max-height: min(72vh, 620px);
+            overflow: auto;
+            padding: 0.75rem;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius);
+            background: rgba(8, 12, 18, 0.96);
+            box-shadow: 0 22px 70px rgba(0, 0, 0, 0.52);
+            backdrop-filter: blur(28px) saturate(160%);
+        }
+
+        .feature-menu.active {
+            display: block;
+        }
+
+        .feature-menu-grid {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .feature-menu-section,
+        .module-section {
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .feature-menu-section-header,
+        .module-section-header {
+            width: 100%;
+            min-height: 44px;
+            display: grid;
+            align-items: center;
+            gap: 0.75rem;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.045);
+            cursor: pointer;
+            text-align: left;
+            transition: var(--transition);
+            font: inherit;
+        }
+
+        .feature-menu-section-header {
+            grid-template-columns: minmax(0, 1fr) auto;
+            padding: 0.68rem 0.85rem;
+            font-size: 0.86rem;
+            font-weight: 720;
+        }
+
+        .feature-menu-section-header::after,
+        .module-section-count::after {
+            content: "⌄";
+            color: var(--text-secondary);
+            transition: transform 0.16s ease;
+        }
+
+        .feature-menu-section.collapsed .feature-menu-section-header::after,
+        .module-section.collapsed .module-section-count::after {
+            transform: rotate(-90deg);
+        }
+
+        .feature-menu-section-count {
+            color: var(--text-tertiary);
+            font-size: 0.74rem;
+            font-weight: 500;
+        }
+
+        .feature-menu-section-items {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(170px, 1fr));
+            gap: 0.625rem;
+            padding: 0.7rem;
+        }
+
+        .feature-menu-section.collapsed .feature-menu-section-items {
+            display: none;
+        }
+
+        .feature-item {
+            min-height: 82px;
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.82rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg-card-soft);
+            transition: var(--transition);
+        }
+
+        .feature-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-strong);
+            transform: translateY(-2px);
+        }
+
+        .feature-item.danger {
+            color: #fecaca;
+        }
+
+        .feature-icon,
+        .module-icon,
+        .module-section-icon {
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.26), rgba(16, 185, 129, 0.10));
+            color: #dbeafe;
+            font-weight: 840;
+            line-height: 1;
+        }
+
+        .feature-icon {
+            width: 42px;
+            height: 42px;
+            font-size: 1.02rem;
+        }
+
+        .feature-title {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.91rem;
+            font-weight: 720;
+            line-height: 1.2;
+        }
+
+        .feature-desc {
+            display: block;
+            margin-top: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-secondary);
+            font-size: 0.74rem;
+            line-height: 1.35;
+        }
+
+        .main-content {
+            width: min(1520px, calc(100% - 3rem));
+            margin: 0 auto;
+            padding: 1.6rem 0 4rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card,
+        .market-card,
+        .date-group,
+        .essay-card,
+        .review-card,
+        .empty-state {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg-card);
+            backdrop-filter: blur(22px) saturate(150%);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+        }
+
+        .stat-card {
+            min-height: 120px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover,
+        .module-card:hover,
+        .essay-card:hover,
+        .review-card:hover {
+            border-color: var(--border-strong);
+            transform: translateY(-2px);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 0.86rem;
+        }
+
+        .stat-icon {
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            border-radius: 7px;
+            background: rgba(255, 255, 255, 0.055);
+            color: #c7d2fe;
+            font-weight: 800;
+        }
+
+        .stat-value {
+            margin-top: 0.72rem;
+            font-size: 2rem;
+            font-weight: 820;
+            line-height: 1;
+        }
+
+        .stat-subtitle {
+            margin-top: 0.4rem;
+            color: var(--text-tertiary);
+            font-size: 0.82rem;
+        }
+
+        .modules-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1.5rem 0 0.9rem;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            font-weight: 760;
+        }
+
+        .modules-hint {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            text-align: right;
+        }
+
+        .module-sections {
+            display: grid;
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+        }
+
+        .module-section-header {
+            grid-template-columns: 36px minmax(0, 1fr) auto;
+            min-height: 54px;
+            padding: 0.8rem 1rem;
+        }
+
+        .module-section-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 0.95rem;
+        }
+
+        .module-section-title,
+        .module-section-desc {
+            display: block;
+        }
+
+        .module-section-title {
+            font-size: 0.98rem;
+            font-weight: 760;
+            line-height: 1.2;
+        }
+
+        .module-section-desc {
+            margin-top: 0.18rem;
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+        }
+
+        .module-section-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: var(--text-tertiary);
+            font-size: 0.76rem;
+            white-space: nowrap;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .module-section.collapsed .modules-grid {
+            display: none;
+        }
+
+        .module-card {
+            position: relative;
+            min-height: 168px;
+            display: grid;
+            grid-template-columns: 58px minmax(0, 1fr);
+            align-items: start;
+            gap: 1rem;
+            overflow: hidden;
+            padding: 1.15rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+            cursor: grab;
+            transition: var(--transition);
+        }
+
+        .module-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .module-card:hover::before {
+            opacity: 1;
+        }
+
+        .module-card.dragging {
+            opacity: 0.5;
+            transform: scale(0.985);
+            cursor: grabbing;
+        }
+
+        .module-card.drag-over {
+            border-color: rgba(129, 140, 248, 0.72);
+            box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.32);
+        }
+
+        .module-icon {
+            width: 58px;
+            height: 58px;
+            font-size: 1.8rem;
+        }
+
+        .module-body {
+            min-width: 0;
+            display: grid;
+            gap: 0.42rem;
+        }
+
+        .module-title {
+            padding-right: 4.4rem;
+            color: var(--text-primary);
+            font-size: 1.08rem;
+            font-weight: 760;
+            line-height: 1.25;
+        }
+
+        .module-description {
+            color: var(--text-secondary);
+            font-size: 0.86rem;
+            line-height: 1.55;
+        }
+
+        .module-badge {
+            position: absolute;
+            top: 0.85rem;
+            right: 0.85rem;
+            padding: 0.18rem 0.58rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.06);
+            font-size: 0.72rem;
+        }
+
+        .module-drag-handle {
+            grid-column: 1 / -1;
+            align-self: end;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.34rem;
+            color: rgba(226, 232, 240, 0.42);
+            font-size: 0.72rem;
+            user-select: none;
+        }
+
+        .module-drag-handle::before {
+            content: "↕";
+            width: 18px;
+            height: 18px;
+            display: inline-grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .market-grid,
+        .today-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .market-card {
+            padding: 1rem;
+        }
+
+        .market-card-title,
+        .date-title,
+        .card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin: 0 0 0.85rem;
+            font-size: 0.98rem;
+            font-weight: 760;
+        }
+
+        .tone-list,
+        .review-fields {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .tone-item,
+        .review-field {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .tone-label,
+        .review-field-label {
+            color: var(--text-tertiary);
+            font-size: 0.78rem;
+            font-weight: 650;
+        }
+
+        .tone-value,
+        .trend-text,
+        .review-field-content,
+        .review-field-content-static,
+        .essay-content {
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .trend-text {
+            margin: 0.35rem 0 0;
+        }
+
+        .content-section {
+            margin-top: 1.5rem;
+        }
+
+        .date-group {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .date-stack {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .essay-card,
+        .review-card {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.035);
+            box-shadow: none;
+        }
+
+        .essay-content,
+        .review-field-content {
+            min-height: 42px;
+            margin-top: 0.45rem;
+            padding: 0.65rem;
+            border: 1px solid transparent;
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.035);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .essay-content[contenteditable="true"]:focus,
+        .review-field-content[contenteditable="true"]:focus {
+            border-color: rgba(129, 140, 248, 0.55);
+            background: rgba(99, 102, 241, 0.10);
+        }
+
+        .card-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .text-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        .text-link:hover {
+            color: var(--text-primary);
+        }
+
+        .text-link.danger {
+            color: #fecaca;
+        }
+
+        .quick-add-card,
+        .empty-state {
+            min-height: 86px;
+            display: grid;
+            place-items: center;
+            gap: 0.35rem;
+            padding: 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-style: dashed;
+        }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .pagination a,
+        .pagination span {
+            min-width: 34px;
+            min-height: 34px;
+            display: inline-grid;
+            place-items: center;
+            padding: 0.4rem 0.72rem;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.045);
+        }
+
+        .pagination .current {
+            color: white;
+            background: rgba(99, 102, 241, 0.68);
+            border-color: rgba(129, 140, 248, 0.45);
+        }
+
+        .pagination-info {
+            flex-basis: 100%;
+            color: var(--text-tertiary);
+            text-align: center;
+            font-size: 0.82rem;
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.72);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal-panel {
+            width: min(520px, 100%);
+            max-height: 82vh;
+            overflow: auto;
+            padding: 1.25rem;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius);
+            background: var(--bg-secondary);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+        }
+
+        .date-checkboxes {
+            display: grid;
+            gap: 0.45rem;
+            max-height: 300px;
+            overflow: auto;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .date-checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .notification {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 10050;
+            max-width: 360px;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            color: white;
+            background: #059669;
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+        }
+
+        .notification.error {
+            background: #dc2626;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .top-bar,
+            .modules-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .top-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .feature-menu-shell {
+                position: static;
+            }
+
+            .feature-menu {
+                left: 1rem;
+                right: 1rem;
+                width: auto;
+            }
+
+            .feature-menu-section-items {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .main-content {
+                width: min(100% - 1rem, 1520px);
+                padding-top: 1rem;
+            }
+
+            .modules-hint {
+                text-align: left;
+            }
+
+            .modules-grid,
+            .market-grid,
+            .today-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .feature-menu-section-items {
+                grid-template-columns: 1fr;
+            }
+
+            .module-section-header {
+                grid-template-columns: 32px minmax(0, 1fr);
+            }
+
+            .module-section-count {
+                grid-column: 2;
+                justify-self: start;
+            }
+
+            .module-card {
+                grid-template-columns: 50px minmax(0, 1fr);
+                min-height: 154px;
+            }
+
+            .module-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h1>▦ 投资复盘系统</h1>
+        <div class="top-actions">
+            <div class="action-group">
+                {% if can_app_write %}
+                <a href="{{ url_for('add_essay') }}" class="btn btn-essay" title="写随笔">✎</a>
+                <a href="{{ url_for('add_review') }}" class="btn btn-primary" title="写复盘">▣</a>
+                <a href="{{ url_for('daily_ai_analysis_page') }}" class="btn btn-ai" title="AI 分析">AI</a>
+                {% else %}
+                <button type="button" class="btn btn-essay" disabled title="无基础访问权限">✎</button>
+                <button type="button" class="btn btn-primary" disabled title="无基础访问权限">▣</button>
+                <button type="button" class="btn btn-ai" disabled title="无基础访问权限">AI</button>
+                {% endif %}
+                {% if has_perm('ai_research:module') %}
+                <a href="{{ url_for('ai_research_assistant_page') }}" class="btn btn-ai" title="AI 研究助理" data-rd-tab-title="AI 研究助理" data-rd-tab-icon="AI">AI研究</a>
+                {% endif %}
+            </div>
+
+            <div class="feature-menu-shell">
+                <button class="btn-menu" type="button" id="feature-menu-button" onclick="toggleMenu()" aria-expanded="false" aria-controls="feature-menu">
+                    <span>▦</span><span>功能矩阵</span>
+                </button>
+                <div class="feature-menu" id="feature-menu">
+                    <div class="feature-menu-grid">
+                        <section class="feature-menu-section" data-feature-section="workbench">
+                            <button class="feature-menu-section-header" type="button" aria-expanded="true">
+                                <span>日常执行 <span class="feature-menu-section-count">记录、上下文与计划</span></span>
+                            </button>
+                            <div class="feature-menu-section-items">
+                                {% if can_app_write %}
+                                {{ feature_link('daily_workbench_page', '✎', '每日工作台', '随笔、复盘、上下文和 AI 分析') }}
+                                {{ feature_link('market_context_page', '◉', '市场上下文', '市场基调和指数走势') }}
+                                {{ feature_link('daily_ai_analysis_page', 'AI', '每日 AI 分析', '按日期生成复盘分析') }}
+                                {{ feature_link('daily_export_page', '⇩', '每日数据导出', '复盘、随笔和市场上下文') }}
+                                {{ feature_link('experience_lessons_page', '训', '经验规则', '复盘成果、规则和踩坑训练') }}
+                                {% endif %}
+                                {% if has_perm('ai_research:module') %}{{ feature_link('ai_research_assistant_page', 'AI', 'AI 研究助理', '模块化生成复盘草稿、主线记忆、交易教练和巡检') }}{% endif %}
+                                {% if has_perm('calendar:module') %}{{ feature_link('calendar', '◷', '投资日历', '事件、提醒、时间节点') }}{% endif %}
+                                {% if has_perm('plans:module') %}
+                                {{ feature_link('plans', '□', '投资计划', '目标、进度、执行看板') }}
+                                {{ feature_link('kelly_calculator_page', '◈', '凯利仓位', '仓位、胜率、回撤约束') }}
+                                {% endif %}
+                            </div>
+                        </section>
+
+                        <section class="feature-menu-section" data-feature-section="research" data-default-collapsed="true">
+                            <button class="feature-menu-section-header" type="button" aria-expanded="false">
+                                <span>投研沉淀 <span class="feature-menu-section-count">资料、体系与思考</span></span>
+                            </button>
+                            <div class="feature-menu-section-items">
+                                {% if has_perm('reports:module') %}
+                                {{ feature_link('reports', '▣', '深度报告', '研究记录和分析沉淀') }}
+                                {{ feature_link('report_reader', '▤', '资料库', '报告、制度、规则文件') }}
+                                {{ feature_link('report_compare_page', '⇆', '资料对比', '文档并排阅读和比较') }}
+                                {{ feature_link('epub_reader_page', 'EP', 'EPUB 读取器', '输入阅读页 URL，拆章预览正文') }}
+                                {% endif %}
+                                {% if has_perm('trading_agents:module') %}{{ feature_link('trading_agents_page', 'AG', '交易体系 Agent', '书籍规则库、观测表单、决策内参') }}{% endif %}
+                                {% if has_perm('topics:module') %}
+                                {{ feature_link('deep_thinking_page', '◇', '深度思考', '边写边追问的提词器') }}
+                                {{ feature_link('topics', '◎', '脑图', '卡片、连线、研究假设') }}
+                                {% endif %}
+                            </div>
+                        </section>
+
+                        <section class="feature-menu-section" data-feature-section="data" data-default-collapsed="true">
+                            <button class="feature-menu-section-header" type="button" aria-expanded="false">
+                                <span>数据策略 <span class="feature-menu-section-count">行情、筛选与组合</span></span>
+                            </button>
+                            <div class="feature-menu-section-items">
+                                {% if has_perm('data_center:module') %}{{ feature_link('data_center_page', '▦', '数据中枢', '批次状态、任务健康、单票画像') }}{% endif %}
+                                {% if has_perm('concept_stocks:module') %}{{ feature_link('concept_stocks', '✦', '概念股维护', '主题组合与图片识别') }}{% endif %}
+                                {% if has_perm('industry_inventory:module') %}{{ feature_link('industry_inventory', '▥', '库存分析', '行业库存与周期观察') }}{% endif %}
+                                {% if has_perm('momentum_scores:module') %}{{ feature_link('momentum_scores_page', '△', '动量评分', '强弱趋势和评分追踪') }}{% endif %}
+                                {% if has_perm('screening_tasks:module') %}{{ feature_link('screening_tasks', '⌕', '筛选任务管理', '策略任务和历史结果') }}{% endif %}
+                                {% if has_perm('holding_costs:module') %}{{ feature_link('stock_holding_costs_page', 'HC', '持仓成本', '平均成本和成交量加权成本') }}{% endif %}
+                                {% if has_perm('valuation:module') %}{{ feature_link('stock_valuation_page', 'EV', '估值锚', 'DCF、PE、PB、PS 和估值方法推荐') }}{% endif %}
+                                {% if has_perm('gru:module') %}{{ feature_link('gru_tasks_page', '◆', 'GRU 选股器', '回测、TopK 清单和 worker 队列') }}{% endif %}
+                                {% if has_perm('data_query:module') %}
+                                {{ feature_link('data_query_config', '⚙', '数据查询配置', '表结构和字段配置') }}
+                                {{ feature_link('data_query_builder', '∑', '数据查询构建器', '组合条件并生成查询') }}
+                                {% endif %}
+                                {% if has_perm('portfolio:module') %}{{ feature_link('portfolio_analysis', '◫', '模拟组合分析', '持仓导入和组合拆解') }}{% endif %}
+                                {% if has_perm('market_sentiment:module') %}{{ feature_link('market_sentiment', '▧', '每日市场情绪', '量化风控和健康度') }}{% endif %}
+                            </div>
+                        </section>
+
+                        <section class="feature-menu-section" data-feature-section="system" data-default-collapsed="true">
+                            <button class="feature-menu-section-header" type="button" aria-expanded="false">
+                                <span>资讯与系统 <span class="feature-menu-section-count">消息、晨报和设置</span></span>
+                            </button>
+                            <div class="feature-menu-section-items">
+                                {% if has_perm('crawler:dashboard') %}
+                                {{ feature_link('crawler_dashboard', '≋', '7×24 小时消息', '聚合资讯流和热点消息') }}
+                                {{ feature_link('crawler_dashboard_wordcloud', '线', '主线延续', '多日主线起点、延续和切换') }}
+                                {% endif %}
+                                {{ feature_link('morning_brief_page', '☼', '每日财经早餐', '晨间要闻和市场线索') }}
+                                {% if has_perm('rbac:admin') %}
+                                {{ feature_link('iching_page', '☯', '周易黄历', '节气、卦象和择时参考') }}
+                                {{ feature_link('admin_rbac_page', '⚿', '用户与权限', '账号、角色、模块授权') }}
+                                {{ feature_link('admin_ai_provider', '◌', 'AI 提供者', '模型供应商、Base URL、Key') }}
+                                {% endif %}
+                                {{ feature_link('logout', '↩', '退出登录', '结束当前会话', True) }}
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <section class="stats-grid" aria-label="数据概览">
+            {% if show_diary_zone %}
+            <div class="stat-card" onclick="window.location.href='{{ url_for('index') }}'">
+                <div class="stat-header"><span>随笔记录</span><span class="stat-icon">✎</span></div>
+                <div class="stat-value">{{ stats.total_essays }}</div>
+                <div class="stat-subtitle">今日 {{ stats.today_essays }} 篇</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='{{ url_for('index') }}'">
+                <div class="stat-header"><span>复盘记录</span><span class="stat-icon">▣</span></div>
+                <div class="stat-value">{{ stats.total_reviews }}</div>
+                <div class="stat-subtitle">累计复盘</div>
+            </div>
+            {% endif %}
+            {% if has_perm('plans:module') %}
+            <div class="stat-card" onclick="window.location.href='{{ url_for('plans') }}'">
+                <div class="stat-header"><span>投资计划</span><span class="stat-icon">□</span></div>
+                <div class="stat-value">{{ stats.total_plans }}</div>
+                <div class="stat-subtitle">{{ stats.active_plans }} 个进行中</div>
+            </div>
+            {% endif %}
+            {% if has_perm('reports:module') %}
+            <div class="stat-card" onclick="window.location.href='{{ url_for('reports') }}'">
+                <div class="stat-header"><span>深度报告</span><span class="stat-icon">▣</span></div>
+                <div class="stat-value">{{ stats.total_reports }}</div>
+                <div class="stat-subtitle">专业分析</div>
+            </div>
+            {% endif %}
+            {% if has_perm('topics:module') %}
+            <div class="stat-card" onclick="window.location.href='{{ url_for('topics') }}'">
+                <div class="stat-header"><span>脑图</span><span class="stat-icon">◎</span></div>
+                <div class="stat-value">{{ stats.total_topics }}</div>
+                <div class="stat-subtitle">思维导图</div>
+            </div>
+            {% endif %}
+            {% if has_perm('calendar:module') %}
+            <div class="stat-card" onclick="window.location.href='{{ url_for('calendar') }}'">
+                <div class="stat-header"><span>近期事件</span><span class="stat-icon">◷</span></div>
+                <div class="stat-value">{{ stats.upcoming_events }}</div>
+                <div class="stat-subtitle">未来 7 天</div>
+            </div>
+            {% endif %}
+        </section>
+
+        {% if has_perm('calendar:module') or has_perm('plans:module') or has_perm('reports:module') or has_perm('ai_research:module') or has_perm('trading_agents:module') or has_perm('topics:module') or has_perm('concept_stocks:module') or has_perm('industry_inventory:module') or has_perm('momentum_scores:module') or has_perm('crawler:dashboard') or has_perm('screening_tasks:module') or has_perm('holding_costs:module') or has_perm('valuation:module') or has_perm('gru:module') or has_perm('data_query:module') or has_perm('portfolio:module') or has_perm('market_sentiment:module') or session.get('username') %}
+        <section aria-label="功能模块">
+            <div class="modules-header">
+                <h2 class="section-title">▦ 功能模块</h2>
+                <div class="modules-hint">按工作流分类折叠；拖动卡片可调整同组顺序。</div>
+            </div>
+            <div class="module-sections" id="module-sections">
+                <section class="module-section" data-module-section="workbench">
+                    <button class="module-section-header" type="button" aria-expanded="true">
+                        <span class="module-section-icon">⌂</span>
+                        <span>
+                            <span class="module-section-title">日常执行</span>
+                            <span class="module-section-desc">记录、上下文、计划和每日复盘动作</span>
+                        </span>
+                        <span class="module-section-count">0 项</span>
+                    </button>
+                    <div class="modules-grid" data-module-grid>
+                        {% if can_app_write %}
+                        {{ module_card('daily_workbench_page', 'daily-workbench', '✎', '每日', '每日工作台', '随笔、复盘、市场上下文和 AI 分析的独立入口。') }}
+                        {{ module_card('market_context_page', 'market-context', '◉', '上下文', '市场上下文', '维护每日市场基调和指数走势，供首页、日历和 AI 分析复用。') }}
+                        {{ module_card('daily_ai_analysis_page', 'daily-ai-analysis', 'AI', 'AI', '每日 AI 分析', '按日期选择随笔、复盘和市场上下文，生成可下载的分析报告。') }}
+                        {{ module_card('daily_export_page', 'daily-export', '⇩', '导出', '每日数据导出', '集中导出随笔、复盘、市场基调和指数走势数据。') }}
+                        {{ module_card('experience_lessons_page', 'experience-lessons', '训', '训练', '经验规则', '整理人工复盘和成果，沉淀可查看、可刷题的规则与踩坑清单。') }}
+                        {% endif %}
+                        {% if has_perm('ai_research:module') %}{{ module_card('ai_research_assistant_page', 'ai-research-assistant', 'AI', '研究', 'AI 研究助理', '模块化生成复盘草稿、主线记忆、交易教练、个股档案和运维巡检。') }}{% endif %}
+                        {% if has_perm('calendar:module') %}{{ module_card('calendar', 'calendar', '◷', '日程', '投资日历', '管理投资事件和重要日期，设置提醒，跟踪计划时间节点。') }}{% endif %}
+                        {% if has_perm('plans:module') %}
+                        {{ module_card('plans', 'plans', '□', '管理', '投资计划', '系统化管理投资目标，跟踪进度和盈利状况。') }}
+                        {{ module_card('kelly_calculator_page', 'kelly', '◈', '仓位', '凯利仓位', '用收益分布、分数凯利、回撤约束推演下注比例。') }}
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="module-section" data-module-section="research" data-default-collapsed="true">
+                    <button class="module-section-header" type="button" aria-expanded="false">
+                        <span class="module-section-icon">▣</span>
+                        <span>
+                            <span class="module-section-title">投研沉淀</span>
+                            <span class="module-section-desc">资料阅读、体系抽取和结构化思考</span>
+                        </span>
+                        <span class="module-section-count">0 项</span>
+                    </button>
+                    <div class="modules-grid" data-module-grid>
+                        {% if has_perm('reports:module') %}
+                        {{ module_card('reports', 'reports', '▣', '分析', '深度报告', '撰写和整理深度分析报告，沉淀投资思考。') }}
+                        {{ module_card('report_reader', 'reader', '▤', '资料', '资料库', '集中管理报告、制度、规则文件，支持阅读和批注。') }}
+                        {{ module_card('epub_reader_page', 'epub-reader', 'EP', '阅读', 'EPUB 读取器', '填写阅读页 URL，自动下载 EPUB 并按章节解析预览。') }}
+                        {% endif %}
+                        {% if has_perm('trading_agents:module') %}{{ module_card('trading_agents_page', 'trading-agents', 'AG', 'Agent', '交易体系 Agent', '把交易书蒸馏成观测维度、规则库和实盘决策内参。') }}{% endif %}
+                        {% if has_perm('topics:module') %}
+                        {{ module_card('deep_thinking_page', 'deep-thinking', '◇', '提词', '深度思考', '边写边引导，实时追问，并沉淀到脑图或深度报告。') }}
+                        {{ module_card('topics', 'topics', '◎', '思维', '脑图', '创建行业、公司和事件卡片，用连线维护研究假设。') }}
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="module-section" data-module-section="data" data-default-collapsed="true">
+                    <button class="module-section-header" type="button" aria-expanded="false">
+                        <span class="module-section-icon">▦</span>
+                        <span>
+                            <span class="module-section-title">数据策略</span>
+                            <span class="module-section-desc">行情数据、筛选任务、组合和风控工具</span>
+                        </span>
+                        <span class="module-section-count">0 项</span>
+                    </button>
+                    <div class="modules-grid" data-module-grid>
+                        {% if has_perm('concept_stocks:module') %}{{ module_card('concept_stocks', 'concept-stocks', '✦', '维护', '概念股维护', '维护概念股组合，支持图片识别和手动输入。') }}{% endif %}
+                        {% if has_perm('industry_inventory:module') %}{{ module_card('industry_inventory', 'industry-inventory', '▥', '周期', '库存分析', '观察行业库存、供需节奏和周期位置。') }}{% endif %}
+                        {% if has_perm('momentum_scores:module') %}{{ module_card('momentum_scores_page', 'momentum-scores', '△', '强弱', '动量评分', '追踪个股与市场强弱，沉淀每日动量评分。') }}{% endif %}
+                        {% if has_perm('data_center:module') %}{{ module_card('data_center_page', 'data-center', '▦', '中枢', '数据中枢', '查看批次状态、任务健康、单票综合画像，并启动全市场 AI 复盘总控。') }}{% endif %}
+                        {% if has_perm('screening_tasks:module') %}{{ module_card('screening_tasks', 'screening-tasks', '⌕', '任务', '筛选任务管理', '管理筛选策略、执行任务和历史结果。') }}{% endif %}
+                        {% if has_perm('holding_costs:module') %}{{ module_card('stock_holding_costs_page', 'stock-holding-costs', 'HC', '成本', '持仓成本', '查看平均持仓成本和成交量加权成本。') }}{% endif %}
+                        {% if has_perm('valuation:module') %}{{ module_card('stock_valuation_page', 'stock-valuation', 'EV', '估值', '估值锚', '聚源字段、手工输入和 DCF、PE、PB、PS 等主流估值方法。') }}{% endif %}
+                        {% if has_perm('gru:module') %}{{ module_card('gru_tasks_page', 'gru-tasks', '◆', 'GRU', 'GRU 选股器', '运行回测、生成 TopK 股票清单，并查看 worker 队列。') }}{% endif %}
+                        {% if has_perm('data_query:module') %}
+                        {{ module_card('data_query_config', 'data-query-config', '⚙', '配置', '数据查询配置', '维护查询可用的表结构、字段和常用维度。') }}
+                        {{ module_card('data_query_builder', 'data-query', '∑', '查询', '数据查询构建器', '通过配置字段和条件组合，快速构建多表查询。') }}
+                        {% endif %}
+                        {% if has_perm('portfolio:module') %}{{ module_card('portfolio_analysis', 'portfolio-analysis', '◫', '组合', '模拟组合分析', '导入持仓数据，拆解市值、行业、交易和个股表现。') }}{% endif %}
+                        {% if has_perm('market_sentiment:module') %}
+                        <div class="module-card module-card-sentiment" draggable="true" data-module-id="market-sentiment" data-url="{{ url_for('market_sentiment') }}" data-rd-tab-title="每日市场情绪" data-rd-tab-icon="▧">
+                            <div class="module-badge">风控</div>
+                            <div class="module-icon">▧</div>
+                        <div class="module-body">
+                            <div class="module-title">每日市场情绪</div>
+                            {% if sentiment_snapshot %}
+                            {% set sentiment_score = sentiment_snapshot.score|int %}
+                            <div style="font-size:28px;font-weight:820;margin:4px 0;
+                                {% if sentiment_score >= 80 %}color:#34d399;
+                                {% elif sentiment_score >= 60 %}color:#fbbf24;
+                                {% else %}color:#f87171;{% endif %}">
+                                {{ sentiment_snapshot.score }}
+                                    <span style="font-size:12px;font-weight:400;color:#6b7280;">/ 100</span>
+                                </div>
+                                <div style="font-size:11px;color:#6b7280;">{{ sentiment_snapshot.day }}</div>
+                                {% else %}
+                                <div class="module-description">8 维量化风控引擎，实时诊断市场健康度。</div>
+                                {% endif %}
+                            </div>
+                            {% if sentiment_snapshot %}
+                            <div style="grid-column:1 / -1;width:110px;height:110px;justify-self:end;">
+                                <canvas id="idxRadarMini" width="110" height="110"></canvas>
+                            </div>
+                            {% endif %}
+                            <div class="module-drag-handle">拖动排序</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="module-section" data-module-section="system" data-default-collapsed="true">
+                    <button class="module-section-header" type="button" aria-expanded="false">
+                        <span class="module-section-icon">≋</span>
+                        <span>
+                            <span class="module-section-title">资讯与系统</span>
+                            <span class="module-section-desc">资讯流、晨报和系统型入口</span>
+                        </span>
+                        <span class="module-section-count">0 项</span>
+                    </button>
+                    <div class="modules-grid" data-module-grid>
+                        {% if has_perm('crawler:dashboard') %}
+                        {{ module_card('crawler_dashboard', 'crawler', '≋', '消息', '7×24 小时消息', '聚合主流资讯流、热点消息和原文入口。') }}
+                        {{ module_card('crawler_dashboard_wordcloud', 'crawler-mainline', '线', '主线', '主线延续', '连续多日压缩资讯标题，判断主线起点、延续、升温降温和切换。') }}
+                        {% endif %}
+                        {{ module_card('morning_brief_page', 'morning-brief', '☼', '晨报', '每日财经早餐', '把隔夜要闻、市场变化和跟进线索整理成晨间清单。') }}
+                        {% if has_perm('rbac:admin') %}
+                        {{ module_card('admin_rbac_page', 'admin-rbac', '⚿', '权限', '用户与权限', '管理账号、角色和模块授权。') }}
+                        {{ module_card('admin_ai_provider', 'admin-ai-provider', '◌', 'AI', 'AI 提供者', '维护模型供应商、Base URL 和 Key。') }}
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if has_perm('market_sentiment:module') and sentiment_snapshot %}
+        <script>
+        (function(){
+            var maxP=[50,30,20,45,55,40,30,20];
+            var pen={{ sentiment_snapshot.penalties|tojson }};
+            var h=pen.map(function(p,i){return Math.max(0,Math.min(100,100-(p/maxP[i])*100));});
+            var c=document.getElementById('idxRadarMini');
+            if(!c||typeof Chart==='undefined')return;
+            new Chart(c,{type:'radar',data:{
+                labels:['M1','M2','M3','M4','M5','M6','M7','M8'],
+                datasets:[{data:h,backgroundColor:'rgba(99,102,241,0.2)',borderColor:'rgba(129,140,248,0.8)',borderWidth:1.5,
+                    pointBackgroundColor:h.map(function(v){return v>=80?'#34d399':v>=50?'#fbbf24':'#f87171';}),pointRadius:2.5}]
+            },options:{responsive:true,maintainAspectRatio:true,animation:{duration:0},
+                plugins:{legend:{display:false}},
+                scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'rgba(255,255,255,0.06)'},
+                    angleLines:{color:'rgba(255,255,255,0.08)'},pointLabels:{color:'#6b7280',font:{size:8}}}}}});
+        })();
+        </script>
+        {% endif %}
+
+        {% if show_diary_zone %}
+        <section class="market-grid" aria-label="今日市场数据">
+            <div class="market-card">
+                <h2 class="market-card-title">
+                    <span>今日市场基调</span>
+                    {% if can_app_write and current_tone %}<a class="text-link" href="{{ url_for('set_market_tone', date=current_tone.date) }}">修改</a>{% endif %}
+                </h2>
+                {% if current_tone %}
+                <div class="tone-list">
+                    <div class="tone-item"><span class="tone-label">成交量</span><div class="tone-value">{{ current_tone.volume_status }}</div></div>
+                    <div class="tone-item"><span class="tone-label">情绪</span><div class="tone-value">{{ current_tone.emotion_status }}</div></div>
+                    <div class="tone-item"><span class="tone-label">分化</span><div class="tone-value">{{ current_tone.divergence_status }}</div></div>
+                    {% if current_tone.investment_strategies %}<div class="tone-item"><span class="tone-label">策略</span><div class="tone-value">{{ current_tone.investment_strategies.replace(',', '、') }}</div></div>{% endif %}
+                    {% if current_tone.investment_styles %}<div class="tone-item"><span class="tone-label">风格</span><div class="tone-value">{{ current_tone.investment_styles.replace(',', '、') }}</div></div>{% endif %}
+                </div>
+                {% else %}
+                <div class="empty-state">今日市场基调暂未填写</div>
+                {% endif %}
+            </div>
+
+            <div class="market-card">
+                <h2 class="market-card-title">
+                    <span>今日指数走势</span>
+                    {% if can_app_write and current_trend %}<a class="text-link" href="{{ url_for('set_index_trend', date=current_trend.date) }}">修改</a>{% endif %}
+                </h2>
+                {% if current_trend %}
+                <div class="tone-list">
+                    <div class="tone-item"><span class="tone-label">上证指数</span><p class="trend-text">{{ current_trend.shanghai_trend }}</p></div>
+                    <div class="tone-item"><span class="tone-label">深证成指</span><p class="trend-text">{{ current_trend.shenzhen_trend }}</p></div>
+                    <div class="tone-item"><span class="tone-label">创业板指</span><p class="trend-text">{{ current_trend.chinext_trend }}</p></div>
+                </div>
+                {% else %}
+                <div class="empty-state">今日指数走势暂未填写</div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="content-section" aria-label="随笔和复盘">
+            <div class="modules-header">
+                <h2 class="section-title">◇ 每日记录</h2>
+                {% if can_app_write %}
+                <div class="action-group">
+                    <a href="{{ url_for('add_essay') }}" class="btn btn-essay">写随笔</a>
+                    <a href="{{ url_for('add_review') }}" class="btn btn-primary">写复盘</a>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if sorted_dates %}
+                {% for date in sorted_dates %}
+                {% set group = date_groups[date] %}
+                <div class="date-group" data-date="{{ date }}">
+                    <h3 class="date-title">
+                        <span>{{ date }}</span>
+                        {% if can_app_write %}<a class="text-link" href="{{ url_for('add_essay') }}?date={{ date }}">添加随笔</a>{% endif %}
+                    </h3>
+                    <div class="date-stack">
+                        {% for essay in group.essays %}
+                        <article class="essay-card">
+                            <div class="card-title">
+                                <span>随笔</span>
+                                {% if can_app_write %}
+                                <span class="card-actions">
+                                    <a class="text-link danger" href="{{ url_for('delete_essay', id=essay.id) }}" data-confirm="确定要删除这条随笔吗？">删除</a>
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if can_app_write %}
+                            <div class="essay-content" contenteditable="true" data-id="{{ essay.id }}">{{ essay.content or '' }}</div>
+                            {% else %}
+                            <div class="essay-content">{{ essay.content or '' }}</div>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+
+                        {% if group.review %}
+                        {% set review = group.review %}
+                        <article class="review-card">
+                            <div class="card-title">
+                                <span>复盘</span>
+                                {% if can_app_write %}
+                                <span class="card-actions">
+                                    <a class="text-link" href="{{ url_for('add_review', id=review.id) }}">编辑</a>
+                                    <a class="text-link danger" href="{{ url_for('delete_review', id=review.id) }}" data-confirm="确定要删除这条复盘吗？">删除</a>
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="review-fields">
+                                {% for field, label in [
+                                    ('market_emotion', '市场情绪'),
+                                    ('sectors', '板块'),
+                                    ('themes', '题材'),
+                                    ('market_cap_performance', '市值表现'),
+                                    ('investment_style', '投资方式'),
+                                    ('major_events', '大事')
+                                ] %}
+                                <div class="review-field">
+                                    <div class="review-field-label">{{ label }}</div>
+                                    {% if can_app_write %}
+                                    <div class="review-field-content" contenteditable="true" data-id="{{ review.id }}" data-field="{{ field }}">{{ review[field] or '' }}</div>
+                                    {% else %}
+                                    <div class="review-field-content-static">{{ review[field] or '' }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </article>
+                        {% elif can_app_write %}
+                        <a href="{{ url_for('add_review') }}?date={{ date }}" class="quick-add-card">添加复盘</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>还没有记录，开始你的复盘之旅吧</p>
+                    {% if can_app_write %}
+                    <div class="action-group">
+                        <a href="{{ url_for('add_essay') }}" class="btn btn-essay">写随笔</a>
+                        <a href="{{ url_for('add_review') }}" class="btn btn-primary">写复盘</a>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if total_dates and total_dates > 0 %}
+            <div class="pagination">
+                <div class="pagination-info">共 {{ total_dates }} 个日期{% if total_pages > 1 %}，第 {{ page }} / {{ total_pages }} 页{% endif %}</div>
+                {% if total_pages > 1 %}
+                    {% if page > 1 %}
+                    <a href="{{ url_for('index', page=page-1, date=date_filter if date_filter else '') }}">上一页</a>
+                    {% else %}
+                    <span class="disabled">上一页</span>
+                    {% endif %}
+
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                        <span class="current">{{ p }}</span>
+                        {% elif total_pages <= 7 or p == 1 or p == total_pages or (p >= page - 1 and p <= page + 1) %}
+                        <a href="{{ url_for('index', page=p, date=date_filter if date_filter else '') }}">{{ p }}</a>
+                        {% elif p == 2 or p == total_pages - 1 %}
+                        <span>...</span>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page < total_pages %}
+                    <a href="{{ url_for('index', page=page+1, date=date_filter if date_filter else '') }}">下一页</a>
+                    {% else %}
+                    <span class="disabled">下一页</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+        {% else %}
+        <section class="empty-state">
+            <p>当前账号只有首页入口权限，未开放日记内容区。</p>
+        </section>
+        {% endif %}
+    </main>
+
+    {% if can_app_write %}
+    <div class="modal-backdrop" id="ai-analysis-modal">
+        <div class="modal-panel">
+            <h2 class="section-title">AI 智能分析</h2>
+            <p style="color: var(--text-secondary); margin: 0.75rem 0 1rem;">选择要分析的日期，系统会基于随笔、复盘、市场基调和指数走势生成分析报告。</p>
+            <form id="ai-analysis-form">
+                <div id="date-checkboxes" class="date-checkboxes"></div>
+                <div class="action-group" style="justify-content:flex-end;margin-top:1rem;">
+                    <button type="button" class="btn" onclick="closeAIAnalysis()">取消</button>
+                    <button type="button" class="btn btn-primary" id="ai-submit-btn" onclick="submitAIAnalysis()">开始分析</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        window.marketToneData = {
+            volume_status: {{ (current_tone.volume_status if current_tone else '适中')|tojson }},
+            investment_styles: {{ (current_tone.investment_styles if current_tone and current_tone.investment_styles else '')|tojson }},
+            investment_strategies: {{ (current_tone.investment_strategies if current_tone and current_tone.investment_strategies else '')|tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+
+        function toggleMenu() {
+            const menu = document.getElementById('feature-menu');
+            const btn = document.getElementById('feature-menu-button');
+            if (!menu) return;
+            const isOpen = menu.classList.toggle('active');
+            if (btn) {
+                btn.classList.toggle('active', isOpen);
+                btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        }
+
+        function initCollapsibleSections(sectionSelector, headerSelector, storageKey, itemSelector, countSelector) {
+            let state = {};
+            try {
+                state = JSON.parse(localStorage.getItem(storageKey) || '{}') || {};
+            } catch (error) {
+                state = {};
+            }
+
+            document.querySelectorAll(sectionSelector).forEach(section => {
+                const itemCount = itemSelector ? section.querySelectorAll(itemSelector).length : 1;
+                if (!itemCount) {
+                    section.hidden = true;
+                    return;
+                }
+                const countEl = countSelector ? section.querySelector(countSelector) : null;
+                if (countEl && itemSelector) countEl.textContent = itemCount + ' 项';
+                const id = section.dataset.featureSection || section.dataset.moduleSection || '';
+                const header = section.querySelector(headerSelector);
+                if (!header) return;
+                const shouldCollapse = Object.prototype.hasOwnProperty.call(state, id)
+                    ? !!state[id]
+                    : section.getAttribute('data-default-collapsed') === 'true';
+                section.classList.toggle('collapsed', shouldCollapse);
+                header.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+                header.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    const collapsed = section.classList.toggle('collapsed');
+                    header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                    state[id] = collapsed;
+                    localStorage.setItem(storageKey, JSON.stringify(state));
+                });
+            });
+        }
+
+        initCollapsibleSections('.feature-menu-section[data-feature-section]', '.feature-menu-section-header', 'reviewsdaily.featureMenuSections.v2', '.feature-item');
+        initCollapsibleSections('.module-section[data-module-section]', '.module-section-header', 'reviewsdaily.moduleSections.v2', '.module-card[data-module-id]', '.module-section-count');
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('feature-menu');
+            const btn = document.getElementById('feature-menu-button');
+            if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.classList.remove('active');
+                btn.classList.remove('active');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+
+            const confirmLink = e.target.closest ? e.target.closest('[data-confirm]') : null;
+            if (confirmLink && !window.confirm(confirmLink.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('feature-menu');
+                const btn = document.getElementById('feature-menu-button');
+                if (menu) menu.classList.remove('active');
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+                closeAIAnalysis();
+            }
+            {% if can_app_write %}
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                if (window.__reviewsDailyOpenThorPanel) {
+                    e.preventDefault();
+                    window.__reviewsDailyOpenThorPanel();
+                    return;
+                }
+                if (window.__reviewsDailyWorkspaceShellLoaded) return;
+                e.preventDefault();
+                window.location.href = '{{ url_for("add_essay") }}';
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+                e.preventDefault();
+                window.location.href = '{{ url_for("add_review") }}';
+            }
+            {% endif %}
+        });
+
+        (function initModuleOrdering() {
+            const grids = Array.from(document.querySelectorAll('.modules-grid[data-module-grid]'));
+            if (!grids.length) return;
+            const storageKey = 'reviewsdaily.moduleOrder.v2';
+            let draggedCard = null;
+            let dragMoved = false;
+
+            function getCards(grid) {
+                return Array.from(grid.querySelectorAll('.module-card[data-module-id]'));
+            }
+
+            function sectionIdForGrid(grid) {
+                const section = grid.closest('.module-section[data-module-section]');
+                return section ? section.getAttribute('data-module-section') : 'default';
+            }
+
+            function readOrderState() {
+                try {
+                    const value = JSON.parse(localStorage.getItem(storageKey) || '{}') || {};
+                    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+                } catch (error) {
+                    return {};
+                }
+            }
+
+            function saveOrder(grid) {
+                const state = readOrderState();
+                state[sectionIdForGrid(grid)] = getCards(grid).map(card => card.dataset.moduleId);
+                localStorage.setItem(storageKey, JSON.stringify(state));
+            }
+
+            function restoreOrder(grid) {
+                const order = readOrderState()[sectionIdForGrid(grid)] || [];
+                if (!Array.isArray(order) || !order.length) return;
+                const cards = new Map(getCards(grid).map(card => [card.dataset.moduleId, card]));
+                order.forEach(id => {
+                    const card = cards.get(id);
+                    if (card) grid.appendChild(card);
+                });
+            }
+
+            function moveBefore(target, event) {
+                if (!draggedCard || !target || target === draggedCard) return;
+                const grid = target.closest('.modules-grid[data-module-grid]');
+                if (!grid || draggedCard.closest('.modules-grid[data-module-grid]') !== grid) return;
+                const rect = target.getBoundingClientRect();
+                const afterMidpoint = event && (
+                    event.clientY > rect.top + rect.height / 2 ||
+                    event.clientX > rect.left + rect.width / 2
+                );
+                if (afterMidpoint) target.after(draggedCard);
+                else target.before(draggedCard);
+                dragMoved = true;
+            }
+
+            grids.forEach(grid => {
+                restoreOrder(grid);
+                getCards(grid).forEach(card => {
+                    function openCardUrl() {
+                        const url = card.dataset.url;
+                        if (!url) return;
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.style.display = 'none';
+                        const tabTitle = card.getAttribute('data-rd-tab-title');
+                        const tabIcon = card.getAttribute('data-rd-tab-icon');
+                        if (tabTitle) link.setAttribute('data-rd-tab-title', tabTitle);
+                        if (tabIcon) link.setAttribute('data-rd-tab-icon', tabIcon);
+                        document.body.appendChild(link);
+                        const click = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                        const handled = !link.dispatchEvent(click);
+                        link.remove();
+                        if (!handled) window.location.href = url;
+                    }
+
+                    card.addEventListener('click', function(event) {
+                        if (dragMoved) {
+                            event.preventDefault();
+                            dragMoved = false;
+                            return;
+                        }
+                        openCardUrl();
+                    });
+
+                    card.addEventListener('dragstart', function(event) {
+                        draggedCard = card;
+                        dragMoved = false;
+                        card.classList.add('dragging');
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', card.dataset.moduleId || '');
+                    });
+
+                    card.addEventListener('dragover', function(event) {
+                        if (!draggedCard) return;
+                        event.preventDefault();
+                        card.classList.add('drag-over');
+                        event.dataTransfer.dropEffect = 'move';
+                        moveBefore(card, event);
+                    });
+
+                    card.addEventListener('dragleave', function() {
+                        card.classList.remove('drag-over');
+                    });
+
+                    card.addEventListener('drop', function(event) {
+                        event.preventDefault();
+                        card.classList.remove('drag-over');
+                        saveOrder(grid);
+                    });
+
+                    card.addEventListener('dragend', function() {
+                        card.classList.remove('dragging');
+                        grids.forEach(itemGrid => getCards(itemGrid).forEach(item => item.classList.remove('drag-over')));
+                        if (draggedCard) saveOrder(grid);
+                        draggedCard = null;
+                        setTimeout(() => { dragMoved = false; }, 0);
+                    });
+                });
+            });
+        })();
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = 'notification' + (type === 'error' ? ' error' : '');
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 2200);
+        }
+
+        {% if can_app_write %}
+        function saveForm(url, values, successMessage) {
+            const formData = new FormData();
+            Object.keys(values).forEach(key => formData.append(key, values[key]));
+            return fetch(url, { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.success) {
+                        showNotification(successMessage || '已保存');
+                    } else {
+                        showNotification((data && data.error) || '保存失败', 'error');
+                    }
+                    return data;
+                })
+                .catch(() => showNotification('保存失败', 'error'));
+        }
+
+        document.querySelectorAll('.essay-content[contenteditable="true"]').forEach(field => {
+            let originalContent = field.textContent.trim();
+            field.addEventListener('blur', function() {
+                const content = field.textContent.trim();
+                if (content === originalContent) return;
+                saveForm('/save_essay', { id: field.dataset.id, content: content }, '随笔已保存')
+                    .then(data => { if (data && data.success) originalContent = content; });
+            });
+        });
+
+        document.querySelectorAll('.review-field-content[contenteditable="true"]').forEach(field => {
+            let originalContent = field.textContent.trim();
+            field.addEventListener('blur', function() {
+                const value = field.textContent.trim();
+                if (value === originalContent) return;
+                saveForm('/save_review_field', { id: field.dataset.id, field: field.dataset.field, value: value }, '复盘已保存')
+                    .then(data => { if (data && data.success) originalContent = value; });
+            });
+        });
+
+        function openAIAnalysis() {
+            const modal = document.getElementById('ai-analysis-modal');
+            if (!modal) return;
+            modal.classList.add('active');
+            loadAvailableDates();
+        }
+
+        function closeAIAnalysis() {
+            const modal = document.getElementById('ai-analysis-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function loadAvailableDates() {
+            const dateGroups = document.querySelectorAll('.date-group');
+            const dateCheckboxes = document.getElementById('date-checkboxes');
+            if (!dateCheckboxes) return;
+            dateCheckboxes.innerHTML = '';
+            const dates = [];
+            dateGroups.forEach(group => {
+                const date = group.getAttribute('data-date');
+                if (date && !dates.includes(date)) dates.push(date);
+            });
+            const today = new Date().toISOString().split('T')[0];
+            if (!dates.includes(today)) dates.unshift(today);
+            dates.sort((a, b) => b.localeCompare(a));
+            dates.forEach(date => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'date';
+                checkbox.value = date;
+                const span = document.createElement('span');
+                span.textContent = date;
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                dateCheckboxes.appendChild(label);
+            });
+        }
+
+        function submitAIAnalysis() {
+            const form = document.getElementById('ai-analysis-form');
+            const submitBtn = document.getElementById('ai-submit-btn');
+            const formData = new FormData(form);
+            const dates = formData.getAll('date');
+            if (!dates.length) {
+                alert('请至少选择一个日期');
+                return;
+            }
+            const requestData = new FormData();
+            dates.forEach(date => requestData.append('date', date));
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '分析中...';
+            fetch('{{ url_for("ai_generate") }}', { method: 'POST', body: requestData })
+                .then(response => {
+                    if (!response.ok) return response.json().then(err => Promise.reject(err));
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'AI分析报告_' + new Date().toISOString().split('T')[0] + '.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    closeAIAnalysis();
+                    showNotification('AI 分析完成');
+                })
+                .catch(error => {
+                    alert((error && error.error) || 'AI 分析失败，请稍后重试');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
+        }
+        {% endif %}
+    </script>
+</body>
+</html>

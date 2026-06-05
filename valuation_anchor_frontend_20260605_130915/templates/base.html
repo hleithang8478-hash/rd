@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}知行合一{% endblock %}</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app_shell.css') }}">
+    {% block head_extra %}{% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='app_responsive_overrides.css') }}">
+</head>
+<body{% block body_attrs %}{% endblock %}>
+    {% block content %}{% endblock %}
+    {% include 'crawler_drawer.html' %}
+    <script src="{{ url_for('static', filename='thor_gateway.js') }}"></script>
+    <script src="{{ url_for('static', filename='app_shell.js') }}"></script>
+    {% block page_scripts %}{% endblock %}
+    <div id="db-status-toast" style="
+        display:none;position:fixed;top:16px;right:16px;z-index:99999;
+        max-width:360px;padding:12px 16px;border-radius:8px;
+        font-size:13px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,.25);
+        color:#fff;background:#c0392b;cursor:pointer;" title="点击关闭"></div>
+    <script>
+    (function(){
+        var KEY = 'db_status_dismissed';
+        function dismiss(el){ el.style.display='none'; }
+        function show(msg, isWarn){
+            var el = document.getElementById('db-status-toast');
+            if(!el) return;
+            el.style.background = isWarn ? '#e67e22' : '#c0392b';
+            el.innerHTML = '<strong>数据库警告</strong><br>' + msg + '<br><small style="opacity:.75">点击关闭</small>';
+            el.style.display = 'block';
+            el.onclick = function(){ dismiss(el); };
+        }
+        var CACHE_KEY = 'db_status_cache_v1';
+        var CACHE_TTL = 30000;
+        function handleStatus(d){
+            var msgs = [];
+            if(d.backend && d.backend !== 'mysql' && d.backend !== 'mysql8'){
+                msgs.push('当前后端为 <b>' + d.backend + '</b>，请检查 APP_DB_BACKEND 配置。');
+            }
+            if(!d.app_db_ok){
+                msgs.push('主数据库连接失败：' + (d.app_db_error || '未知错误'));
+            }
+            if(d.crawler_db_ok === false){
+                msgs.push('爬虫数据库连接失败：' + (d.crawler_db_error || '未知错误'));
+            }
+            if(msgs.length){ show(msgs.join('<br>'), d.backend !== 'sqlite' && d.app_db_ok === false); }
+        }
+        try {
+            var cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+            if(cached && cached.data && Date.now() - cached.time < CACHE_TTL){
+                handleStatus(cached.data);
+                return;
+            }
+        } catch(e){}
+        fetch('/api/db-status').then(function(r){ return r.json(); }).then(function(d){
+            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: d })); } catch(e){}
+            handleStatus(d);
+        }).catch(function(){});
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+﻿<div id="rd-workspace-shell"
+     class="rd-workspace-shell"
+     data-current-path="{{ request.path }}"
+     data-current-title="">
+    <aside class="rd-global-nav" id="rdGlobalNav" aria-label="全局导航">
+        <div class="rd-global-nav-head">
+            <a class="rd-brand" href="{{ url_for('index') }}" data-rd-tab-title="首页" data-rd-tab-icon="⌂">
+                <span class="rd-brand-mark">知</span>
+                <span class="rd-brand-text">知行合一</span>
+            </a>
+            <button class="rd-nav-toggle" type="button" id="rdNavToggle" title="收起/展开导航" aria-label="收起/展开导航">☰</button>
+        </div>
+        <div class="rd-nav-sections" role="navigation">
+            <div class="rd-nav-section" data-rd-nav-section="daily">
+                <button class="rd-nav-label" type="button" aria-expanded="true">每日复盘</button>
+                <div class="rd-nav-items">
+                <a class="rd-nav-link" href="{{ url_for('index') }}" data-rd-nav-path="/" data-rd-tab-title="首页" data-rd-tab-icon="⌂">
+                    <span class="rd-nav-icon">⌂</span><span class="rd-nav-text">首页总览</span>
+                </a>
+                {% if has_perm is defined and has_perm('app:access') %}
+                <a class="rd-nav-link" href="{{ url_for('daily_workbench_page') }}" data-rd-nav-path="/daily" data-rd-tab-title="每日工作台" data-rd-tab-icon="✎">
+                    <span class="rd-nav-icon">✎</span><span class="rd-nav-text">每日工作台</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('market_context_page') }}" data-rd-nav-path="/daily/market" data-rd-tab-title="市场上下文" data-rd-tab-icon="◉">
+                    <span class="rd-nav-icon">◉</span><span class="rd-nav-text">市场上下文</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('daily_ai_analysis_page') }}" data-rd-nav-path="/daily/ai" data-rd-tab-title="AI 分析" data-rd-tab-icon="AI">
+                    <span class="rd-nav-icon">AI</span><span class="rd-nav-text">AI 分析</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('daily_export_page') }}" data-rd-nav-path="/daily/export" data-rd-tab-title="数据导出" data-rd-tab-icon="⇩">
+                    <span class="rd-nav-icon">⇩</span><span class="rd-nav-text">数据导出</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('experience_lessons_page') }}" data-rd-nav-path="/experience_lessons" data-rd-tab-title="经验规则" data-rd-tab-icon="训">
+                    <span class="rd-nav-icon">训</span><span class="rd-nav-text">经验规则</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="execution">
+                <button class="rd-nav-label" type="button" aria-expanded="true">投资执行</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('plans:module') %}
+                <a class="rd-nav-link" href="{{ url_for('plans') }}" data-rd-nav-path="/plans" data-rd-tab-title="投资计划" data-rd-tab-icon="□">
+                    <span class="rd-nav-icon">□</span><span class="rd-nav-text">投资计划</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('calendar:module') %}
+                <a class="rd-nav-link" href="{{ url_for('calendar') }}" data-rd-nav-path="/calendar" data-rd-tab-title="投资日历" data-rd-tab-icon="◷">
+                    <span class="rd-nav-icon">◷</span><span class="rd-nav-text">投资日历</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('plans:module') %}
+                <a class="rd-nav-link" href="{{ url_for('kelly_calculator_page') }}" data-rd-nav-path="/kelly" data-rd-tab-title="凯利仓位" data-rd-tab-icon="◈">
+                    <span class="rd-nav-icon">◈</span><span class="rd-nav-text">凯利仓位</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="research" data-default-collapsed="true">
+                <button class="rd-nav-label" type="button" aria-expanded="true">投研资料</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('reports:module') %}
+                <a class="rd-nav-link" href="{{ url_for('reports') }}" data-rd-nav-path="/reports" data-rd-tab-title="深度报告" data-rd-tab-icon="▣">
+                    <span class="rd-nav-icon">▣</span><span class="rd-nav-text">深度报告</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('report_reader') }}" data-rd-nav-path="/reports/reader" data-rd-tab-title="资料库" data-rd-tab-icon="▤">
+                    <span class="rd-nav-icon">▤</span><span class="rd-nav-text">资料库</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('report_compare_page') }}" data-rd-nav-path="/reports/compare" data-rd-tab-title="资料对比" data-rd-tab-icon="⇆">
+                    <span class="rd-nav-icon">⇆</span><span class="rd-nav-text">资料对比</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('epub_reader_page') }}" data-rd-nav-path="/epub_reader" data-rd-tab-title="EPUB 读取器" data-rd-tab-icon="EP">
+                    <span class="rd-nav-icon">EP</span><span class="rd-nav-text">EPUB 读取器</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="strategy" data-default-collapsed="true">
+                <button class="rd-nav-label" type="button" aria-expanded="true">研究工具</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('ai_research:module') %}
+                <a class="rd-nav-link" href="{{ url_for('ai_research_assistant_page') }}" data-rd-nav-path="/ai_research_assistant" data-rd-tab-title="AI 研究助理" data-rd-tab-icon="AI" title="模块化生成复盘草稿、主线记忆、交易教练和巡检">
+                    <span class="rd-nav-icon">AI</span><span class="rd-nav-text">AI 研究助理</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('trading_agents:module') %}
+                <a class="rd-nav-link" href="{{ url_for('trading_agents_page') }}" data-rd-nav-path="/trading_agents" data-rd-tab-title="交易体系 Agent" data-rd-tab-icon="AG">
+                    <span class="rd-nav-icon">AG</span><span class="rd-nav-text">交易体系 Agent</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('topics:module') %}
+                <a class="rd-nav-link" href="{{ url_for('deep_thinking_page') }}" data-rd-nav-path="/thinking" data-rd-tab-title="深度思考" data-rd-tab-icon="◇">
+                    <span class="rd-nav-icon">◇</span><span class="rd-nav-text">深度思考</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('topics') }}" data-rd-nav-path="/topics" data-rd-tab-title="脑图" data-rd-tab-icon="◎">
+                    <span class="rd-nav-icon">◎</span><span class="rd-nav-text">脑图</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('rbac:admin') %}
+                <a class="rd-nav-link" href="{{ url_for('iching_page') }}" data-rd-nav-path="/iching" data-rd-tab-title="周易黄历" data-rd-tab-icon="☯">
+                    <span class="rd-nav-icon">☯</span><span class="rd-nav-text">周易黄历</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="data" data-default-collapsed="true">
+                <button class="rd-nav-label" type="button" aria-expanded="true">数据看板</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('data_center:module') %}
+                <a class="rd-nav-link" href="{{ url_for('data_center_page') }}" data-rd-nav-path="/data_center" data-rd-tab-title="数据中枢" data-rd-tab-icon="▦" title="数据状态、单票画像和全市场 AI 复盘总控">
+                    <span class="rd-nav-icon">▦</span><span class="rd-nav-text">数据中枢</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('market_sentiment:module') %}
+                <a class="rd-nav-link" href="{{ url_for('market_sentiment') }}" data-rd-nav-path="/market_sentiment" data-rd-tab-title="市场情绪" data-rd-tab-icon="▧">
+                    <span class="rd-nav-icon">▧</span><span class="rd-nav-text">市场情绪</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('concept_stocks:module') %}
+                <a class="rd-nav-link" href="{{ url_for('concept_stocks') }}" data-rd-nav-path="/concept_stocks" data-rd-tab-title="概念股" data-rd-tab-icon="✦">
+                    <span class="rd-nav-icon">✦</span><span class="rd-nav-text">概念股</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('industry_inventory:module') %}
+                <a class="rd-nav-link" href="{{ url_for('industry_inventory') }}" data-rd-nav-path="/industry_inventory" data-rd-tab-title="库存分析" data-rd-tab-icon="▥">
+                    <span class="rd-nav-icon">▥</span><span class="rd-nav-text">库存分析</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('momentum_scores:module') %}
+                <a class="rd-nav-link" href="{{ url_for('momentum_scores_page') }}" data-rd-nav-path="/momentum_scores" data-rd-tab-title="动量评分" data-rd-tab-icon="△">
+                    <span class="rd-nav-icon">△</span><span class="rd-nav-text">动量评分</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('screening_tasks:module') %}
+                <a class="rd-nav-link" href="{{ url_for('screening_tasks') }}" data-rd-nav-path="/screening_tasks" data-rd-tab-title="筛选任务" data-rd-tab-icon="⌕">
+                    <span class="rd-nav-icon">⌕</span><span class="rd-nav-text">筛选任务</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('gru:module') %}
+                <a class="rd-nav-link" href="{{ url_for('gru_tasks_page') }}" data-rd-nav-path="/gru_tasks" data-rd-tab-title="GRU 选股器" data-rd-tab-icon="◆">
+                    <span class="rd-nav-icon">◆</span><span class="rd-nav-text">GRU 选股器</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="portfolio" data-default-collapsed="true">
+                <button class="rd-nav-label" type="button" aria-expanded="true">组合与查询</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('portfolio:module') %}
+                <a class="rd-nav-link" href="{{ url_for('portfolio_analysis') }}" data-rd-nav-path="/portfolio_analysis" data-rd-tab-title="组合分析" data-rd-tab-icon="◫">
+                    <span class="rd-nav-icon">◫</span><span class="rd-nav-text">组合分析</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('holding_costs:module') %}
+                <a class="rd-nav-link" href="{{ url_for('stock_holding_costs_page') }}" data-rd-nav-path="/stock_holding_costs" data-rd-tab-title="持仓成本" data-rd-tab-icon="HC">
+                    <span class="rd-nav-icon">HC</span><span class="rd-nav-text">持仓成本</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('valuation:module') %}
+                <a class="rd-nav-link" href="{{ url_for('stock_valuation_page') }}" data-rd-nav-path="/stock_valuation" data-rd-tab-title="估值锚" data-rd-tab-icon="EV">
+                    <span class="rd-nav-icon">EV</span><span class="rd-nav-text">估值锚</span>
+                </a>
+                {% endif %}
+                {% if has_perm is defined and has_perm('data_query:module') %}
+                <a class="rd-nav-link" href="{{ url_for('data_query_builder') }}" data-rd-nav-path="/data_query" data-rd-tab-title="数据查询" data-rd-tab-icon="∑">
+                    <span class="rd-nav-icon">∑</span><span class="rd-nav-text">数据查询</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('data_query_config') }}" data-rd-nav-path="/data_query_config" data-rd-tab-title="查询配置" data-rd-tab-icon="⚙">
+                    <span class="rd-nav-icon">⚙</span><span class="rd-nav-text">查询配置</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="news" data-default-collapsed="true">
+                <button class="rd-nav-label" type="button" aria-expanded="true">资讯情报</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('crawler:dashboard') %}
+                <a class="rd-nav-link" href="{{ url_for('crawler_dashboard') }}" data-rd-nav-path="/crawler_dashboard" data-rd-tab-title="资讯流" data-rd-tab-icon="≋">
+                    <span class="rd-nav-icon">≋</span><span class="rd-nav-text">资讯流</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('crawler_dashboard_wordcloud') }}" data-rd-nav-path="/crawler_dashboard/wordcloud" data-rd-tab-title="主线延续" data-rd-tab-icon="线">
+                    <span class="rd-nav-icon">线</span><span class="rd-nav-text">主线延续</span>
+                </a>
+                {% endif %}
+                <a class="rd-nav-link" href="{{ url_for('morning_brief_page') }}" data-rd-nav-path="/morning_brief" data-rd-tab-title="财经早餐" data-rd-tab-icon="☼">
+                    <span class="rd-nav-icon">☼</span><span class="rd-nav-text">财经早餐</span>
+                </a>
+                </div>
+            </div>
+
+            <div class="rd-nav-section" data-rd-nav-section="system" data-default-collapsed="true">
+                <button class="rd-nav-label" type="button" aria-expanded="true">系统管理</button>
+                <div class="rd-nav-items">
+                {% if has_perm is defined and has_perm('rbac:admin') %}
+                <a class="rd-nav-link" href="{{ url_for('admin_rbac_page') }}" data-rd-nav-path="/admin/rbac" data-rd-tab-title="权限管理" data-rd-tab-icon="⚿">
+                    <span class="rd-nav-icon">⚿</span><span class="rd-nav-text">权限管理</span>
+                </a>
+                <a class="rd-nav-link" href="{{ url_for('admin_ai_provider') }}" data-rd-nav-path="/admin/ai-provider" data-rd-tab-title="AI 设置" data-rd-tab-icon="◌">
+                    <span class="rd-nav-icon">◌</span><span class="rd-nav-text">AI 设置</span>
+                </a>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="rd-global-nav-foot">
+            <a class="rd-nav-link rd-logout-link" href="{{ url_for('logout') }}">
+                <span class="rd-nav-icon">↩</span><span class="rd-nav-text">退出登录</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="rd-tabbar" id="rdTabbar" aria-label="打开的页面">
+        <button class="rd-mobile-nav-toggle" type="button" id="rdMobileNavToggle" title="导航" aria-label="导航">☰</button>
+        <div class="rd-tabs" id="rdTabs"></div>
+        <button class="rd-ai-usage" id="rdAiUsage" type="button" title="点击刷新 AI 额度" aria-live="polite">
+            <span class="rd-ai-usage__label">AI额度</span>
+            <span class="rd-ai-usage__value" id="rdAiUsageValue">查询中</span>
+        </button>
+        <div class="rd-tab-actions">
+            <button type="button" id="rdCloseOtherTabs" title="批量关闭页签" aria-label="批量关闭页签" aria-haspopup="menu" aria-expanded="false">批量</button>
+            <div class="rd-tab-bulk-menu" id="rdTabBulkMenu" role="menu" hidden>
+                <button type="button" role="menuitem" data-rd-close-mode="others">关闭其他</button>
+                <button type="button" role="menuitem" data-rd-close-mode="left">关闭左侧</button>
+                <button type="button" role="menuitem" data-rd-close-mode="right">关闭右侧</button>
+                <button type="button" role="menuitem" data-rd-close-mode="all">关闭全部</button>
+            </div>
+        </div>
+    </div>
+    <div class="rd-nav-scrim" id="rdNavScrim"></div>
+</div>

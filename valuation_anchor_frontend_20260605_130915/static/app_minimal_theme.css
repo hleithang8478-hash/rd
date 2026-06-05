@@ -1,0 +1,176 @@
+/* ReviewsDaily compatibility layer.
+   Page colors are intentionally left to the original templates.
+   This file only keeps the refined workspace tab shape. */
+
+.rd-workspace-shell {
+    --rd-tabbar-height: 40px;
+}
+
+.rd-tabbar {
+    height: var(--rd-tabbar-height) !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    gap: 6px !important;
+    padding: 5px 10px 5px 8px !important;
+    background: rgba(8, 13, 22, 0.92) !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24) !important;
+    backdrop-filter: blur(20px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(130%) !important;
+}
+
+.rd-tabs {
+    gap: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    scrollbar-width: none !important;
+}
+
+.rd-tabs::-webkit-scrollbar {
+    display: none !important;
+}
+
+.rd-tab {
+    position: relative !important;
+    height: 28px !important;
+    min-width: 64px !important;
+    max-width: 172px !important;
+    grid-template-columns: minmax(0, 1fr) 16px !important;
+    gap: 0 !important;
+    padding: 0 3px 0 0 !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    color: rgba(203, 213, 225, 0.68) !important;
+    box-shadow: none !important;
+    opacity: 0.88 !important;
+}
+
+.rd-tab::after {
+    content: "" !important;
+    position: absolute !important;
+    right: -1px !important;
+    top: 9px !important;
+    width: 1px !important;
+    height: 10px !important;
+    background: rgba(148, 163, 184, 0.16) !important;
+}
+
+.rd-tab:last-child::after,
+.rd-tab.active::after {
+    opacity: 0 !important;
+}
+
+@supports selector(.rd-tab:has(+ .rd-tab.active)) {
+    .rd-tab:has(+ .rd-tab.active)::after {
+        opacity: 0 !important;
+    }
+}
+
+.rd-tab:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(248, 250, 252, 0.92) !important;
+    opacity: 1 !important;
+}
+
+.rd-tab.active {
+    background: rgba(34, 211, 238, 0.12) !important;
+    border-color: rgba(34, 211, 238, 0.22) !important;
+    color: #f8fafc !important;
+    box-shadow: 0 6px 18px rgba(34, 211, 238, 0.08) !important;
+    opacity: 1 !important;
+}
+
+.rd-tab-main {
+    min-height: 0 !important;
+    height: 100% !important;
+    gap: 0 !important;
+    padding-left: 10px !important;
+    padding-right: 2px !important;
+    color: inherit !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: inherit !important;
+    box-shadow: none !important;
+}
+
+.rd-tab-icon {
+    width: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    color: rgba(147, 197, 253, 0.70) !important;
+    font-size: 11px !important;
+}
+
+.rd-tab.active .rd-tab-icon {
+    width: auto !important;
+    margin-right: 5px !important;
+    opacity: 0.75 !important;
+}
+
+.rd-tab-title {
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+}
+
+.rd-tab-close,
+.rd-tab-actions button,
+.rd-mobile-nav-toggle {
+    color: rgba(203, 213, 225, 0.70) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+
+.rd-tab-close {
+    width: 16px !important;
+    height: 16px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    opacity: 0 !important;
+}
+
+.rd-tab:hover .rd-tab-close,
+.rd-tab.active:hover .rd-tab-close,
+.rd-tab:focus-within .rd-tab-close {
+    opacity: 0.58 !important;
+}
+
+.rd-tab-close:hover,
+.rd-tab-actions button:hover,
+.rd-mobile-nav-toggle:hover {
+    color: #f8fafc !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.rd-tab-actions {
+    gap: 4px !important;
+}
+
+.rd-tab-actions button,
+.rd-mobile-nav-toggle {
+    height: 28px !important;
+    min-height: 28px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.rd-frame-host,
+.rd-tab-frame {
+    background: var(--rd-bg, #0f172a) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rd-tabbar,
+    .rd-tab,
+    .rd-tab-close,
+    .rd-tab-actions button {
+        transition: none !important;
+    }
+}
